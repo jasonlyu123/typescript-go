@@ -24,11 +24,12 @@ var (
 )
 
 type SnapshotFS struct {
-	toPath    func(fileName string) tspath.Path
-	fs        vfs.FS
-	overlays  map[tspath.Path]*Overlay
-	diskFiles map[tspath.Path]*diskFile
-	readFiles collections.SyncMap[tspath.Path, memoizedDiskFile]
+	toPath           func(fileName string) tspath.Path
+	fs               vfs.FS
+	overlays         map[tspath.Path]*Overlay
+	diskFiles        map[tspath.Path]*diskFile
+	virtualDiskFiles map[tspath.Path]*virtualDiskFile
+	readFiles        collections.SyncMap[tspath.Path, memoizedDiskFile]
 }
 
 type memoizedDiskFile func() FileHandle
@@ -42,6 +43,9 @@ func (s *SnapshotFS) GetFile(fileName string) FileHandle {
 		return file
 	}
 	if file, ok := s.diskFiles[s.toPath(fileName)]; ok {
+		return file
+	}
+	if file, ok := s.virtualDiskFiles[s.toPath(fileName)]; ok {
 		return file
 	}
 	newEntry := memoizedDiskFile(sync.OnceValue(func() FileHandle {
@@ -61,10 +65,12 @@ func (s *SnapshotFS) isOpenFile(fileName string) bool {
 }
 
 type snapshotFSBuilder struct {
-	fs        vfs.FS
-	overlays  map[tspath.Path]*Overlay
-	diskFiles *dirty.SyncMap[tspath.Path, *diskFile]
-	toPath    func(string) tspath.Path
+	fs                        vfs.FS
+	overlays                  map[tspath.Path]*Overlay
+	diskFiles                 *dirty.SyncMap[tspath.Path, *diskFile]
+	virtualDiskFiles          *dirty.SyncMap[tspath.Path, *virtualDiskFile]
+	toPath                    func(string) tspath.Path
+	languageExtendabilityHost LanguageExtendabilityHost
 }
 
 func newSnapshotFSBuilder(
@@ -73,14 +79,17 @@ func newSnapshotFSBuilder(
 	diskFiles map[tspath.Path]*diskFile,
 	positionEncoding lsproto.PositionEncodingKind,
 	toPath func(fileName string) tspath.Path,
+	languageExtendabilityHost LanguageExtendabilityHost,
 ) *snapshotFSBuilder {
 	cachedFS := cachedvfs.From(fs)
 	cachedFS.Enable()
 	return &snapshotFSBuilder{
-		fs:        cachedFS,
-		overlays:  overlays,
-		diskFiles: dirty.NewSyncMap(diskFiles, nil),
-		toPath:    toPath,
+		fs:                        cachedFS,
+		overlays:                  overlays,
+		diskFiles:                 dirty.NewSyncMap(diskFiles, nil),
+		virtualDiskFiles:          dirty.NewSyncMap(languageExtendabilityHost.GetFiles(), nil),
+		toPath:                    toPath,
+		languageExtendabilityHost: languageExtendabilityHost,
 	}
 }
 
@@ -90,12 +99,14 @@ func (s *snapshotFSBuilder) FS() vfs.FS {
 
 func (s *snapshotFSBuilder) Finalize() (*SnapshotFS, bool) {
 	diskFiles, changed := s.diskFiles.Finalize()
+	virtualFiles, virtualFilesChanged := s.virtualDiskFiles.Finalize()
 	return &SnapshotFS{
-		fs:        s.fs,
-		overlays:  s.overlays,
-		diskFiles: diskFiles,
-		toPath:    s.toPath,
-	}, changed
+		fs:               s.fs,
+		overlays:         s.overlays,
+		diskFiles:        diskFiles,
+		toPath:           s.toPath,
+		virtualDiskFiles: virtualFiles,
+	}, changed || virtualFilesChanged
 }
 
 func (s *snapshotFSBuilder) isOpenFile(path tspath.Path) bool {
@@ -111,6 +122,28 @@ func (s *snapshotFSBuilder) GetFile(fileName string) FileHandle {
 func (s *snapshotFSBuilder) GetFileByPath(fileName string, path tspath.Path) FileHandle {
 	if file, ok := s.overlays[path]; ok {
 		return file
+	}
+	if s.languageExtendabilityHost.CanHandleFile(fileName) {
+		file, _ := s.virtualDiskFiles.LoadOrStore(path, &virtualDiskFile{fileBase: fileBase{fileName: fileName}, needsReload: true})
+
+		if file == nil {
+			return nil
+		}
+		file.Locked(func(entry dirty.Value[*virtualDiskFile]) {
+			if entry.Value() != nil && !entry.Value().MatchesDiskText() {
+				if content, err := s.languageExtendabilityHost.LoadFile(fileName); err == nil {
+					entry.Change(func(file *virtualDiskFile) {
+						file.content = content.content
+						file.kind = content.kind
+						file.hash = xxh3.HashString128(content.content)
+						file.needsReload = false
+					})
+				} else {
+					entry.Delete()
+				}
+			}
+		})
+		return file.Value()
 	}
 	entry, _ := s.diskFiles.LoadOrStore(path, &diskFile{fileBase: fileBase{fileName: fileName}, needsReload: true})
 	if entry != nil {

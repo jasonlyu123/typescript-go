@@ -107,7 +107,11 @@ func (c *configFileRegistryBuilder) reloadIfNeeded(entry *configFileEntry, fileN
 	case PendingReloadFull:
 		logger.Log("Loading config file: " + fileName)
 		oldCommandLine := entry.commandLine
-		entry.commandLine, _ = tsoptions.GetParsedCommandLineOfConfigFilePath(fileName, path, nil, nil /*optionsRaw*/, c, c)
+		extraFileExtensions := c.GetExtraFileExtensions()
+		entry.commandLine, _ = tsoptions.GetParsedCommandLineOfConfigFilePath(fileName, path, nil, nil /*optionsRaw*/, c, c, extraFileExtensions)
+		if len(extraFileExtensions) > 0 {
+			entry.commandLine.CompilerOptions().AllowNonTsExtensions = core.TSTrue
+		}
 		c.updateExtendingConfigs(path, entry.commandLine, oldCommandLine)
 		c.updateRootFilesWatch(fileName, entry)
 		logger.Log("Finished loading config file")
@@ -607,6 +611,10 @@ func (c *configFileRegistryBuilder) GetExtendedConfig(fileName string, path tspa
 		Host:            host,
 		Cache:           c,
 	}).ExtendedConfigCacheEntry
+}
+
+func (c *configFileRegistryBuilder) GetExtraFileExtensions() []tsoptions.FileExtensionInfo {
+	return c.sessionOptions.ExtraFileExtensions
 }
 
 func (c *configFileRegistryBuilder) Cleanup() {

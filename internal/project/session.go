@@ -21,6 +21,7 @@ import (
 	"github.com/microsoft/typescript-go/internal/project/ata"
 	"github.com/microsoft/typescript-go/internal/project/background"
 	"github.com/microsoft/typescript-go/internal/project/logging"
+	"github.com/microsoft/typescript-go/internal/tsoptions"
 	"github.com/microsoft/typescript-go/internal/tspath"
 	"github.com/microsoft/typescript-go/internal/vfs"
 )
@@ -50,6 +51,7 @@ type SessionOptions struct {
 	PushDiagnosticsEnabled bool
 	DebounceDelay          time.Duration
 	Locale                 locale.Locale
+	ExtraFileExtensions    []tsoptions.FileExtensionInfo
 }
 
 type SessionInit struct {
@@ -126,6 +128,14 @@ type Session struct {
 	// are using each glob.
 	watches   map[fileSystemWatcherKey]*fileSystemWatcherValue
 	watchesMu sync.Mutex
+
+	languageExtendabilityHost LanguageExtendabilityHost
+}
+
+type LanguageExtendabilityHost interface {
+	GetFiles() map[tspath.Path]*virtualDiskFile
+	CanHandleFile(fileName string) bool
+	LoadFile(fileName string) (*virtualDiskFile, error)
 }
 
 func NewSession(init *SessionInit) *Session {
@@ -176,6 +186,13 @@ func NewSession(init *SessionInit) *Session {
 			ThrottleLimit:   5,
 		}, session)
 	}
+
+	session.languageExtendabilityHost = NewLSPLanguageExtensionHost(
+		init.Options.ExtraFileExtensions,
+		init.Client,
+		context.Background(),
+		toPath,
+	)
 
 	return session
 }

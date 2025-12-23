@@ -21626,6 +21626,8 @@ type InitializationOptions struct {
 
 	// The client-side command name that resolved references/implementations `CodeLens` should trigger. Arguments passed will be `(DocumentUri, Position, Location[])`.
 	CodeLensShowLocationsCommandName *string `json:"codeLensShowLocationsCommandName,omitzero"`
+
+	ExtraFileExtensions []ProtocolCustomExtensionInfo `json:"extraFileExtensions,omitzero"`
 }
 
 // ExportInfoMapKey uniquely identifies an export for auto-import purposes.
@@ -23108,6 +23110,8 @@ func unmarshalParams(method Method, data []byte) (any, error) {
 		return unmarshalPtrTo[CancelParams](data)
 	case MethodProgress:
 		return unmarshalPtrTo[ProgressParams](data)
+	case MethodLanguageExtensionLoadFile:
+		return unmarshalPtrTo[LanguageExtensionLoadFileParams](data)
 	default:
 		return unmarshalAny(data)
 	}
@@ -23253,6 +23257,8 @@ func unmarshalResult(method Method, data []byte) (any, error) {
 		return unmarshalValue[ExecuteCommandResponse](data)
 	case MethodWorkspaceApplyEdit:
 		return unmarshalValue[ApplyWorkspaceEditResponse](data)
+	case MethodLanguageExtensionLoadFile:
+		return unmarshalValue[*LanguageExtensionLoadFileResult](data)
 	default:
 		return unmarshalAny(data)
 	}

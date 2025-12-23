@@ -21,6 +21,9 @@ var _ project.Client = &ClientMock{}
 //
 //		// make and configure a mocked project.Client
 //		mockedClient := &ClientMock{
+//			LanguageExtensionLoadFileFunc: func(ctx context.Context, params *lsproto.LanguageExtensionLoadFileParams) (*lsproto.LanguageExtensionLoadFileResult, error) {
+//				panic("mock out the LanguageExtensionLoadFile method")
+//			},
 //			PublishDiagnosticsFunc: func(ctx context.Context, params *lsproto.PublishDiagnosticsParams) error {
 //				panic("mock out the PublishDiagnostics method")
 //			},
@@ -46,6 +49,9 @@ var _ project.Client = &ClientMock{}
 //
 //	}
 type ClientMock struct {
+	// LanguageExtensionLoadFileFunc mocks the LanguageExtensionLoadFile method.
+	LanguageExtensionLoadFileFunc func(ctx context.Context, params *lsproto.LanguageExtensionLoadFileParams) (*lsproto.LanguageExtensionLoadFileResult, error)
+
 	// PublishDiagnosticsFunc mocks the PublishDiagnostics method.
 	PublishDiagnosticsFunc func(ctx context.Context, params *lsproto.PublishDiagnosticsParams) error
 
@@ -66,6 +72,13 @@ type ClientMock struct {
 
 	// calls tracks calls to the methods.
 	calls struct {
+		// LanguageExtensionLoadFile holds details about calls to the LanguageExtensionLoadFile method.
+		LanguageExtensionLoadFile []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// Params is the params argument value.
+			Params *lsproto.LanguageExtensionLoadFileParams
+		}
 		// PublishDiagnostics holds details about calls to the PublishDiagnostics method.
 		PublishDiagnostics []struct {
 			// Ctx is the ctx argument value.
@@ -105,12 +118,53 @@ type ClientMock struct {
 			Watchers []*lsproto.FileSystemWatcher
 		}
 	}
-	lockPublishDiagnostics sync.RWMutex
-	lockRefreshCodeLens    sync.RWMutex
-	lockRefreshDiagnostics sync.RWMutex
-	lockRefreshInlayHints  sync.RWMutex
-	lockUnwatchFiles       sync.RWMutex
-	lockWatchFiles         sync.RWMutex
+	lockLanguageExtensionLoadFile sync.RWMutex
+	lockPublishDiagnostics        sync.RWMutex
+	lockRefreshCodeLens           sync.RWMutex
+	lockRefreshDiagnostics        sync.RWMutex
+	lockRefreshInlayHints         sync.RWMutex
+	lockUnwatchFiles              sync.RWMutex
+	lockWatchFiles                sync.RWMutex
+}
+
+// LanguageExtensionLoadFile calls LanguageExtensionLoadFileFunc.
+func (mock *ClientMock) LanguageExtensionLoadFile(ctx context.Context, params *lsproto.LanguageExtensionLoadFileParams) (*lsproto.LanguageExtensionLoadFileResult, error) {
+	callInfo := struct {
+		Ctx    context.Context
+		Params *lsproto.LanguageExtensionLoadFileParams
+	}{
+		Ctx:    ctx,
+		Params: params,
+	}
+	mock.lockLanguageExtensionLoadFile.Lock()
+	mock.calls.LanguageExtensionLoadFile = append(mock.calls.LanguageExtensionLoadFile, callInfo)
+	mock.lockLanguageExtensionLoadFile.Unlock()
+	if mock.LanguageExtensionLoadFileFunc == nil {
+		var (
+			languageExtensionLoadFileResultOut *lsproto.LanguageExtensionLoadFileResult
+			errOut                             error
+		)
+		return languageExtensionLoadFileResultOut, errOut
+	}
+	return mock.LanguageExtensionLoadFileFunc(ctx, params)
+}
+
+// LanguageExtensionLoadFileCalls gets all the calls that were made to LanguageExtensionLoadFile.
+// Check the length with:
+//
+//	len(mockedClient.LanguageExtensionLoadFileCalls())
+func (mock *ClientMock) LanguageExtensionLoadFileCalls() []struct {
+	Ctx    context.Context
+	Params *lsproto.LanguageExtensionLoadFileParams
+} {
+	var calls []struct {
+		Ctx    context.Context
+		Params *lsproto.LanguageExtensionLoadFileParams
+	}
+	mock.lockLanguageExtensionLoadFile.RLock()
+	calls = mock.calls.LanguageExtensionLoadFile
+	mock.lockLanguageExtensionLoadFile.RUnlock()
+	return calls
 }
 
 // PublishDiagnostics calls PublishDiagnosticsFunc.

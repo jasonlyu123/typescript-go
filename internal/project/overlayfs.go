@@ -376,3 +376,49 @@ func (fs *overlayFS) processChanges(changes []FileChange) (FileChangeSummary, ma
 	fs.overlays = newOverlays
 	return result, newOverlays
 }
+
+type virtualDiskFile struct {
+	fileBase
+	needsReload bool
+	kind        core.ScriptKind
+}
+
+var _ FileHandle = (*virtualDiskFile)(nil)
+
+func (f *virtualDiskFile) Version() int32 {
+	return 0
+}
+
+func (f *virtualDiskFile) MatchesDiskText() bool {
+	return !f.needsReload
+}
+
+func (f *virtualDiskFile) IsOverlay() bool {
+	return false
+}
+
+func (f *virtualDiskFile) Kind() core.ScriptKind {
+	return f.kind
+}
+
+func (f *virtualDiskFile) Clone() *virtualDiskFile {
+	return &virtualDiskFile{
+		fileBase: fileBase{
+			fileName: f.fileName,
+			content:  f.content,
+			hash:     f.hash,
+		},
+		kind: f.kind,
+	}
+}
+
+func newVirtualDiskFile(fileName string, content string, kind core.ScriptKind) *virtualDiskFile {
+	return &virtualDiskFile{
+		fileBase: fileBase{
+			fileName: fileName,
+			content:  content,
+			hash:     xxh3.HashString128(content),
+		},
+		kind: kind,
+	}
+}

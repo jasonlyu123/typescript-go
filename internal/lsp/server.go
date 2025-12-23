@@ -23,6 +23,7 @@ import (
 	"github.com/microsoft/typescript-go/internal/lsp/lsproto"
 	"github.com/microsoft/typescript-go/internal/project"
 	"github.com/microsoft/typescript-go/internal/project/ata"
+	"github.com/microsoft/typescript-go/internal/tsoptions"
 	"github.com/microsoft/typescript-go/internal/tspath"
 	"github.com/microsoft/typescript-go/internal/vfs"
 	"golang.org/x/sync/errgroup"
@@ -293,6 +294,10 @@ func (s *Server) RequestConfiguration(ctx context.Context) (*lsutil.UserPreferen
 		}
 	}
 	return userPreferences, nil
+}
+
+func (s *Server) LanguageExtensionLoadFile(ctx context.Context, params *lsproto.LanguageExtensionLoadFileParams) (*lsproto.LanguageExtensionLoadFileResult, error) {
+	return sendClientRequest(ctx, s, lsproto.LanguageExtensionLoadFileInfo, params)
 }
 
 func (s *Server) Run(ctx context.Context) error {
@@ -857,6 +862,16 @@ func (s *Server) handleInitialized(ctx context.Context, params *lsproto.Initiali
 			disablePushDiagnostics = *s.initializeParams.InitializationOptions.DisablePushDiagnostics
 		}
 	}
+	var extraFileExtensions []tsoptions.FileExtensionInfo = nil
+	if s.initializeParams != nil && s.initializeParams.InitializationOptions != nil {
+		extraFileExtensions = core.Map(s.initializeParams.InitializationOptions.ExtraFileExtensions, func(item lsproto.ProtocolCustomExtensionInfo) tsoptions.FileExtensionInfo {
+			return tsoptions.FileExtensionInfo{
+				Extension:      item.Extension,
+				IsMixedContent: item.IsMixedContent,
+				ScriptKind:     core.ScriptKind(item.ScriptKind),
+			}
+		})
+	}
 
 	s.session = project.NewSession(&project.SessionInit{
 		Options: &project.SessionOptions{
@@ -869,6 +884,7 @@ func (s *Server) handleInitialized(ctx context.Context, params *lsproto.Initiali
 			DebounceDelay:          500 * time.Millisecond,
 			PushDiagnosticsEnabled: !disablePushDiagnostics,
 			Locale:                 s.locale,
+			ExtraFileExtensions:    extraFileExtensions,
 		},
 		FS:          s.fs,
 		Logger:      s.logger,
@@ -876,6 +892,7 @@ func (s *Server) handleInitialized(ctx context.Context, params *lsproto.Initiali
 		NpmExecutor: s,
 		ParseCache:  s.parseCache,
 	})
+	s.logger.Log(string(core.Must(json.Marshal(extraFileExtensions))))
 
 	userPreferences, err := s.RequestConfiguration(ctx)
 	if err != nil {

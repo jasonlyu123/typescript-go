@@ -154,6 +154,10 @@ type FileExtensionInfo struct {
 	ScriptKind     core.ScriptKind
 }
 
+type ExtractExtension interface {
+	GetExtraFileExtensions() []FileExtensionInfo
+}
+
 type ExtendedConfigCache interface {
 	GetExtendedConfig(fileName string, path tspath.Path, resolutionStack []string, host ParseConfigHost) *ExtendedConfigCacheEntry
 }
@@ -1632,7 +1636,9 @@ func getFileNamesFromConfigSpecs(
 	host vfs.FS,
 	extraFileExtensions []FileExtensionInfo,
 ) ([]string, int) {
-	extraFileExtensions = []FileExtensionInfo{}
+	if extraFileExtensions == nil {
+		extraFileExtensions = []FileExtensionInfo{}
+	}
 	basePath = tspath.NormalizePath(basePath)
 	keyMappper := func(value string) string { return tspath.GetCanonicalFileName(value, host.UseCaseSensitiveFileNames()) }
 	// Literal file names (provided via the "files" array in tsconfig.json) are stored in a
@@ -1770,7 +1776,7 @@ func GetParsedCommandLineOfConfigFile(
 	extendedConfigCache ExtendedConfigCache,
 ) (*ParsedCommandLine, []*ast.Diagnostic) {
 	configFileName = tspath.GetNormalizedAbsolutePath(configFileName, sys.GetCurrentDirectory())
-	return GetParsedCommandLineOfConfigFilePath(configFileName, tspath.ToPath(configFileName, sys.GetCurrentDirectory(), sys.FS().UseCaseSensitiveFileNames()), options, optionsRaw, sys, extendedConfigCache)
+	return GetParsedCommandLineOfConfigFilePath(configFileName, tspath.ToPath(configFileName, sys.GetCurrentDirectory(), sys.FS().UseCaseSensitiveFileNames()), options, optionsRaw, sys, extendedConfigCache, nil)
 }
 
 func GetParsedCommandLineOfConfigFilePath(
@@ -1780,6 +1786,7 @@ func GetParsedCommandLineOfConfigFilePath(
 	optionsRaw *collections.OrderedMap[string, any],
 	sys ParseConfigHost,
 	extendedConfigCache ExtendedConfigCache,
+	extraFileExtensions []FileExtensionInfo,
 ) (*ParsedCommandLine, []*ast.Diagnostic) {
 	errors := []*ast.Diagnostic{}
 	configFileText, errors := tryReadFile(configFileName, sys.FS().ReadFile, errors)
@@ -1799,7 +1806,7 @@ func GetParsedCommandLineOfConfigFilePath(
 		optionsRaw,
 		configFileName,
 		nil,
-		nil,
+		extraFileExtensions,
 		extendedConfigCache,
 	), nil
 }
