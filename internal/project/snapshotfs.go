@@ -131,7 +131,7 @@ func (s *snapshotFSBuilder) GetFileByPath(fileName string, path tspath.Path) Fil
 		}
 		file.Locked(func(entry dirty.Value[*virtualDiskFile]) {
 			if entry.Value() != nil && !entry.Value().MatchesDiskText() {
-				if content, err := s.languageExtendabilityHost.LoadFile(fileName); err == nil {
+				if content, err := s.languageExtendabilityHost.LoadFile(fileName); err == nil && content != nil {
 					entry.Change(func(file *virtualDiskFile) {
 						file.content = content.content
 						file.kind = content.kind

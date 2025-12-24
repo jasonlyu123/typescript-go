@@ -187,12 +187,16 @@ func NewSession(init *SessionInit) *Session {
 		}, session)
 	}
 
-	session.languageExtendabilityHost = NewLSPLanguageExtensionHost(
-		init.Options.ExtraFileExtensions,
-		init.Client,
-		context.Background(),
-		toPath,
-	)
+	if len(init.Options.ExtraFileExtensions) > 0 {
+		session.languageExtendabilityHost = NewLSPLanguageExtensionHost(
+			init.Options.ExtraFileExtensions,
+			init.Client,
+			context.Background(),
+			toPath,
+		)
+	} else {
+		session.languageExtendabilityHost = &NoopLanguageExtensionHost{}
+	}
 
 	return session
 }

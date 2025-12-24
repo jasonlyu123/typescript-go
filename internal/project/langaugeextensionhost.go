@@ -12,7 +12,10 @@ import (
 	"github.com/microsoft/typescript-go/internal/tspath"
 )
 
-var _ LanguageExtendabilityHost = (*LSPLanguageExtensionHost)(nil)
+var (
+	_ LanguageExtendabilityHost = (*LSPLanguageExtensionHost)(nil)
+	_ LanguageExtendabilityHost = (*NoopLanguageExtensionHost)(nil)
+)
 
 type LSPLanguageExtensionHost struct {
 	extraFileExtensions []tsoptions.FileExtensionInfo
@@ -42,10 +45,6 @@ func (h *LSPLanguageExtensionHost) GetFiles() map[tspath.Path]*virtualDiskFile {
 }
 
 func (h *LSPLanguageExtensionHost) CanHandleFile(fileName string) bool {
-	if len(h.extraFileExtensions) == 0 {
-		return false
-	}
-
 	ext := strings.TrimPrefix(filepath.Ext(fileName), ".")
 	for _, info := range h.extraFileExtensions {
 		if info.Extension == ext {
@@ -56,10 +55,6 @@ func (h *LSPLanguageExtensionHost) CanHandleFile(fileName string) bool {
 }
 
 func (h *LSPLanguageExtensionHost) GetScriptKindFromFileName(fileName string) core.ScriptKind {
-	if len(h.extraFileExtensions) == 0 {
-		return core.GetScriptKindFromFileName(fileName)
-	}
-
 	ext := filepath.Ext(fileName)
 	for _, info := range h.extraFileExtensions {
 		if info.Extension == ext {
@@ -77,9 +72,27 @@ func (h *LSPLanguageExtensionHost) LoadFile(path string) (*virtualDiskFile, erro
 		URI: lsconv.FileNameToDocumentURI(path),
 	}
 	result, err := h.client.LanguageExtensionLoadFile(h.context, params)
-	if err != nil {
+	if err != nil || result == nil {
 		return nil, err
 	}
 	file := newVirtualDiskFile(path, result.Content, result.ScriptKind)
 	return file, nil
+}
+
+type NoopLanguageExtensionHost struct{}
+
+func (h *NoopLanguageExtensionHost) CanHandleFile(fileName string) bool {
+	return false
+}
+
+func (h *NoopLanguageExtensionHost) GetScriptKindFromFileName(fileName string) core.ScriptKind {
+	return core.GetScriptKindFromFileName(fileName)
+}
+
+func (h *NoopLanguageExtensionHost) LoadFile(path string) (*virtualDiskFile, error) {
+	return nil, nil
+}
+
+func (h *NoopLanguageExtensionHost) GetFiles() map[tspath.Path]*virtualDiskFile {
+	return nil
 }

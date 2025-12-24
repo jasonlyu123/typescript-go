@@ -309,6 +309,13 @@ func (p *ParsedCommandLine) ExtendedSourceFiles() []string {
 	return p.ConfigFile.ExtendedSourceFiles
 }
 
+func (p *ParsedCommandLine) ExtraFileExtensions() []FileExtensionInfo {
+	if p == nil {
+		return nil
+	}
+	return p.extraFileExtensions
+}
+
 func (p *ParsedCommandLine) GetConfigFileParsingDiagnostics() []*ast.Diagnostic {
 	if p.ConfigFile != nil {
 		// todo: !!! should be ConfigFile.ParseDiagnostics, check if they are the same

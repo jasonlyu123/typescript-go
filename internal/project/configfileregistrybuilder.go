@@ -110,7 +110,9 @@ func (c *configFileRegistryBuilder) reloadIfNeeded(entry *configFileEntry, fileN
 		extraFileExtensions := c.GetExtraFileExtensions()
 		entry.commandLine, _ = tsoptions.GetParsedCommandLineOfConfigFilePath(fileName, path, nil, nil /*optionsRaw*/, c, c, extraFileExtensions)
 		if len(extraFileExtensions) > 0 {
-			entry.commandLine.CompilerOptions().AllowNonTsExtensions = core.TSTrue
+			options := entry.commandLine.CompilerOptions()
+			options.AllowArbitraryExtensions = core.TSTrue
+			options.AllowNonTsExtensions = core.TSTrue
 		}
 		c.updateExtendingConfigs(path, entry.commandLine, oldCommandLine)
 		c.updateRootFilesWatch(fileName, entry)

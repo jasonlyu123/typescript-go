@@ -102,7 +102,8 @@ func processAllProgramFiles(
 		supportedExtensions: core.Flatten(tsoptions.GetSupportedExtensionsWithJsonIfResolveJsonModule(compilerOptions, supportedExtensions)),
 	}
 	loader.addProjectReferenceTasks(singleThreaded)
-	loader.resolver = module.NewResolver(loader.projectReferenceFileMapper.host, compilerOptions, opts.TypingsLocation, opts.ProjectName)
+	extraFileExtensions := core.Map(opts.Config.ExtraFileExtensions(), func(info tsoptions.FileExtensionInfo) string { return "." + info.Extension })
+	loader.resolver = module.NewResolver(loader.projectReferenceFileMapper.host, compilerOptions, opts.TypingsLocation, opts.ProjectName, extraFileExtensions)
 	for index, rootFile := range rootFiles {
 		loader.addRootTask(rootFile, nil, &FileIncludeReason{kind: fileIncludeKindRootFile, data: index})
 	}

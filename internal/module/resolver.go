@@ -155,6 +155,7 @@ type Resolver struct {
 	typingsLocation string
 	projectName     string
 	// reportDiagnostic: DiagnosticReporter
+	extraExtensions []string
 }
 
 func NewResolver(
@@ -162,6 +163,7 @@ func NewResolver(
 	options *core.CompilerOptions,
 	typingsLocation string,
 	projectName string,
+	extraExtensions []string,
 ) *Resolver {
 	return &Resolver{
 		host:            host,
@@ -169,6 +171,7 @@ func NewResolver(
 		compilerOptions: options,
 		typingsLocation: typingsLocation,
 		projectName:     projectName,
+		extraExtensions: extraExtensions,
 	}
 }
 
@@ -1463,6 +1466,11 @@ func (r *resolutionState) tryAddingExtensions(extensionless string, extensions e
 				return resolved
 			}
 		}
+		if len(r.resolver.extraExtensions) > 0 && slices.Contains(r.resolver.extraExtensions, originalExtension) {
+			if resolved := r.tryExtension(originalExtension, extensionless, false, onlyRecordFailures); !resolved.shouldContinueSearching() {
+				return resolved
+			}
+		}
 		return continueSearching()
 	}
 }
@@ -1987,7 +1995,7 @@ func extensionIsOk(extensions extensions, extension string) bool {
 }
 
 func ResolveConfig(moduleName string, containingFile string, host ResolutionHost) *ResolvedModule {
-	resolver := NewResolver(host, &core.CompilerOptions{ModuleResolution: core.ModuleResolutionKindNodeNext}, "", "")
+	resolver := NewResolver(host, &core.CompilerOptions{ModuleResolution: core.ModuleResolutionKindNodeNext}, "", "", nil)
 	return resolver.resolveConfig(moduleName, containingFile)
 }
 

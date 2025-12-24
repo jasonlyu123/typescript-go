@@ -892,7 +892,6 @@ func (s *Server) handleInitialized(ctx context.Context, params *lsproto.Initiali
 		NpmExecutor: s,
 		ParseCache:  s.parseCache,
 	})
-	s.logger.Log(string(core.Must(json.Marshal(extraFileExtensions))))
 
 	userPreferences, err := s.RequestConfiguration(ctx)
 	if err != nil {
