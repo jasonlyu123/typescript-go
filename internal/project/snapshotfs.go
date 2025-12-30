@@ -77,6 +77,7 @@ func newSnapshotFSBuilder(
 	fs vfs.FS,
 	overlays map[tspath.Path]*Overlay,
 	diskFiles map[tspath.Path]*diskFile,
+	virtualDiskFiles map[tspath.Path]*virtualDiskFile,
 	positionEncoding lsproto.PositionEncodingKind,
 	toPath func(fileName string) tspath.Path,
 	languageExtendabilityHost LanguageExtendabilityHost,
@@ -87,7 +88,7 @@ func newSnapshotFSBuilder(
 		fs:                        cachedFS,
 		overlays:                  overlays,
 		diskFiles:                 dirty.NewSyncMap(diskFiles, nil),
-		virtualDiskFiles:          dirty.NewSyncMap(languageExtendabilityHost.GetFiles(), nil),
+		virtualDiskFiles:          dirty.NewSyncMap(virtualDiskFiles, nil),
 		toPath:                    toPath,
 		languageExtendabilityHost: languageExtendabilityHost,
 	}

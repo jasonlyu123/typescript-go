@@ -256,7 +256,15 @@ func (s *Snapshot) Clone(ctx context.Context, change SnapshotChange, overlays ma
 	}
 
 	start := time.Now()
-	fs := newSnapshotFSBuilder(session.fs.fs, overlays, s.fs.diskFiles, session.options.PositionEncoding, s.toPath, session.languageExtendabilityHost)
+	fs := newSnapshotFSBuilder(
+		session.fs.fs,
+		overlays,
+		s.fs.diskFiles,
+		s.fs.virtualDiskFiles,
+		session.options.PositionEncoding,
+		s.toPath,
+		session.languageExtendabilityHost,
+	)
 	if change.fileChanges.HasExcessiveWatchEvents() {
 		invalidateStart := time.Now()
 		if !fs.watchChangesOverlapCache(change.fileChanges) {

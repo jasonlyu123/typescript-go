@@ -133,7 +133,6 @@ type Session struct {
 }
 
 type LanguageExtendabilityHost interface {
-	GetFiles() map[tspath.Path]*virtualDiskFile
 	CanHandleFile(fileName string) bool
 	LoadFile(fileName string) (*virtualDiskFile, error)
 }
