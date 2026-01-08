@@ -154,10 +154,6 @@ type FileExtensionInfo struct {
 	ScriptKind     core.ScriptKind
 }
 
-type ExtractExtension interface {
-	GetExtraFileExtensions() []FileExtensionInfo
-}
-
 type ExtendedConfigCache interface {
 	GetExtendedConfig(fileName string, path tspath.Path, resolutionStack []string, host ParseConfigHost) *ExtendedConfigCacheEntry
 }
